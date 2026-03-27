@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dioscuri Commander Dashboard</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+        h1 { color: #1a1a1a; font-size: 1.5rem; margin-bottom: 1.5rem; text-align: center; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #444; }
+        input { width: 100%; padding: 0.75rem; margin-bottom: 1.25rem; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 1rem; background-color: #00a844; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; transition: background 0.3s; }
+        button:hover { background: #008a37; }
+        #status { margin-top: 1rem; text-align: center; font-weight: 600; min-height: 1.2rem; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>Share a Smile</h1>
+        
+        <label>Recipient Code (RCP_...)</label>
+        <input type="text" id="rcp" placeholder="Enter recipient code">
+
+        <label>Amount (Naira)</label>
+        <input type="number" id="amount" placeholder="e.g. 1000">
+
+        <label>Commander PIN</label>
+        <input type="password" id="pin" placeholder="Enter your PIN">
+
+        <button onclick="releaseSmile()">Release Relief</button>
+        
+        <div id="status"></div>
+    </div>
+
+    <script>
+    async function releaseSmile() {
+        const status = document.getElementById('status');
+        const btn = document.querySelector('button');
+        
+        // Initial UI feedback
+        status.innerText = "Connecting to Engine...";
+        status.style.color = "#555";
+        btn.disabled = true;
+
+        const payload = {
+            pin: document.getElementById('pin').value,
+            recipientCode: document.getElementById('rcp').value,
+            amountInNaira: document.getElementById('amount').value,
+            reason: "Project Dioscuri Relief"
+        };
+
+        try {
+            const response = await fetch('https://production.up.railway.app/release-smile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                status.innerText = "✅ Success: Funds Released!";
+                status.style.color = "green";
+            } else {
+                status.innerText = "❌ Failed: " + (result.detail || "Invalid Request");
+                status.style.color = "red";
+            }
+        } catch (err) {
+            status.innerText = "⚠️ Connection Failed: Check Railway Logs";
+            status.style.color = "red";
+            console.error("Fetch error:", err);
+        } finally {
+            btn.disabled = false;
+        }
+    }
+    </script>
+
+</body>
+</html>
