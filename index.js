@@ -6,16 +6,45 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 
-// 1. DATABASE CONNECTION (The 80,000,000 Vault)
+// 1. DATABASE CONNECTION
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// 2. FLUTTERWAVE CONFIGURATION
+// 2. THE AUTOMATIC VAULT BUILDER (RECOMMENDED)
+const initializeVault = async () => {
+  try {
+    console.log("🛠️ Checking Vault Status...");
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS relief_vault (
+        id SERIAL PRIMARY KEY,
+        account_name TEXT DEFAULT 'Dioscuri Main Vault',
+        balance NUMERIC(20, 2) DEFAULT 80000000.00,
+        currency TEXT DEFAULT 'NGN',
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
+    const checkEmpty = await pool.query('SELECT COUNT(*) FROM relief_vault');
+    if (parseInt(checkEmpty.rows[0].count) === 0) {
+      await pool.query("INSERT INTO relief_vault (account_name, balance) VALUES ('Dioscuri Main Vault', 80000000.00)");
+      console.log("💰 SUCCESS: Vault Initialized with 80,000,000 NGN");
+    } else {
+      console.log("✅ Vault is already funded and ready.");
+    }
+  } catch (err) {
+    console.error("❌ Vault Initialization Error:", err);
+  }
+};
+
+// Start the Vault Builder
+initializeVault();
+
+// 3. FLUTTERWAVE CONFIGURATION
 const FLW_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY || 'FLWSECK_TEST-56359664f919bfed0984bacfa280cd7c-X';
 
-// 3. THE "RELEASE SMILE" ENGINE
+// 4. THE "RELEASE SMILE" ENGINE
 async function releaseSmile(amount, account_number, bank_code) {
   try {
     const response = await axios.post('https://api.flutterwave.com/v3/transfers', {
@@ -39,7 +68,7 @@ async function releaseSmile(amount, account_number, bank_code) {
   }
 }
 
-// 4. API ENDPOINT TO TRIGGER PAYOUT
+// 5. API ENDPOINT
 app.post('/release-smile', async (req, res) => {
   const { amount, account_number, bank_code } = req.body;
   try {
@@ -50,7 +79,7 @@ app.post('/release-smile', async (req, res) => {
   }
 });
 
-// 5. SERVER STARTUP
+// 6. SERVER STARTUP
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log('🚀 Engine Online');
